@@ -25,6 +25,7 @@ COPY --from=build /usr/src/app/dist/app.js ./
 # COPY --from=build /usr/src/app/node_modules ./node_modules
 
 COPY data ./data
+VOLUME /usr/src/app/data
 
 # RUN echo '{"type": "module"}' > package.json
 
