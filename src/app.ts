@@ -1,6 +1,7 @@
 import { createServer } from "http";
 import { createSession, createChannel } from "better-sse";
 import { watch, readFileSync } from 'node:fs';
+import 'dotenv/config'
 
 interface Device {
     devName: string;
@@ -8,6 +9,8 @@ interface Device {
     manufName: string;
     attributes: string[];
 }
+
+const CORS = process.env.ALLOW_FROM || "http://127.0.0.1:3000";
 
 const statePath = "data/state.json";
 const dbPath = "data/database.db";
@@ -19,7 +22,7 @@ const channel = createChannel();
 const server = createServer(async (req, res) => {
     switch (req.url) {
         case "/sse": {
-            res.setHeader("Access-Control-Allow-Origin",["http://127.0.0.1:3000"]);
+            res.setHeader("Access-Control-Allow-Origin", [CORS]);
             const session = await createSession(req, res);
             channel.register(session);
             session.push(devices, "init");
@@ -29,7 +32,7 @@ const server = createServer(async (req, res) => {
 
             break;
         }
-        case "/devices":{
+        case "/devices": {
             res.end(JSON.stringify(devices));
             break;
         }
@@ -77,6 +80,7 @@ watch(watchPath, (eventType, filename) => {
         const newState = JSON.parse(readFileSync(statePath, "utf-8"));
         const newDB = readDB();
         const newDevices = processData(newState, newDB);
+        console.log("change");
         for (const device in newDevices) {
             if (!(device in (devices))) {
                 channel.broadcast(newDevices[device]);
