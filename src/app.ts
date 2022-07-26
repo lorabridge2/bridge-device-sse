@@ -10,7 +10,7 @@ interface Device {
     attributes: string[];
 }
 
-const CORS = process.env.ALLOW_FROM || "http://127.0.0.1:3000";
+// const CORS = process.env.ALLOW_FROM || "http://127.0.0.1:3000";
 
 const statePath = "data/state.json";
 const dbPath = "data/database.db";
@@ -22,7 +22,7 @@ const channel = createChannel();
 const server = createServer(async (req, res) => {
     switch (req.url) {
         case "/sse": {
-            res.setHeader("Access-Control-Allow-Origin", [CORS]);
+            res.setHeader("Access-Control-Allow-Origin", [req.headers['origin'] as string]);
             const session = await createSession(req, res);
             channel.register(session);
             session.push(devices, "init");
