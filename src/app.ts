@@ -77,14 +77,22 @@ devices = processData(state, db);
 
 watch(watchPath, (eventType, filename) => {
     if (eventType === "change") {
-        const newState = JSON.parse(readFileSync(statePath, "utf-8"));
+        let newState;
+        try {
+            newState = JSON.parse(readFileSync(statePath, "utf-8"));
+        } catch (e) {
+            console.log("state file does not contain valid json");
+            //e.g. vscode sometimes saves an empty file before actually storing the content
+            return;
+        }
         const newDB = readDB();
         const newDevices = processData(newState, newDB);
+        console.log(newDevices);
         console.log("change");
         for (const device in newDevices) {
             if (!(device in (devices))) {
                 channel.broadcast(newDevices[device]);
-                devices[newDevices['device']['ieeeAddr']] = newDevices[device];
+                devices[newDevices[device]['ieeeAddr']] = newDevices[device];
             } else {
                 // console.log(JSON.stringify(newDevices[device]));
                 // console.log(JSON.stringify(devices[device]));
