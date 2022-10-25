@@ -62,15 +62,6 @@ let rclient: any;
 let mclient;
 
 const server = createServer(async (req, res) => {
-    rclient = await getClient();
-    stats = await retrieveStats();
-
-    setTimeout(updateStats, 1000);
-
-    try {
-        mclient = await getMClient();
-    } catch (error) { console.error(error); }
-
     res.setHeader("Access-Control-Allow-Origin", [req.headers['origin'] as string]);
     console.log(req.headers['origin']);
     switch (req.url) {
@@ -220,4 +211,15 @@ watch(watchPath, (eventType, filename) => {
     // }
 });
 
-server.listen(8080);
+async function main() {
+    rclient = await getClient();
+    stats = await retrieveStats();
+    setTimeout(updateStats, 1000);
+
+    try {
+        mclient = await getMClient();
+    } catch (error) { console.error(error); }
+    server.listen(8080);
+}
+
+main();
