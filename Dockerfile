@@ -21,7 +21,7 @@ COPY package.json package-lock.json ./
 RUN npm install --omit dev
 RUN npm audit fix
 
-COPY --from=build /usr/src/app/dist/app.js ./
+COPY --from=build /usr/src/app/dist/*.js ./
 # COPY --from=build /usr/src/app/node_modules ./node_modules
 
 COPY data ./data
