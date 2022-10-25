@@ -137,20 +137,15 @@ async function updateStats() {
 }
 
 async function retrieveStats(): Promise<Stats> {
-    const lora = { txstatus: "unknown", queueLength: "unknown", status: "unknown", devices: 0 };
+    const lora = { txstatus: "unknown", queueLength: "unknown" };
     lora['txstatus'] = await rclient.get("txstatus") || "unknown";
     lora['queueLength'] = (await rclient.keys("lorabridge:device:*:message:*")).length.toString() || "0";
     // console.log(await getOsStats());
     // res = { ...res, ... await getOsStats() };
 
     const zigbee: { status: string, devices: number } = { status: "unknown", devices: 0 };
-    try {
-        zigbee['status'] = zState;
-    }
-    catch (error) {
-        zigbee['status'] = "unknown";
-        console.log(error);
-    }
+
+    zigbee['status'] = zState;
     zigbee['devices'] = devCount;
 
     return { ... await getOsStats(), lorawan: lora, zigbee: zigbee } as Stats;
