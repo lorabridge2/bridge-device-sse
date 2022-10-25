@@ -5,8 +5,6 @@ import 'dotenv/config'
 import { getClient } from './_redis';
 import { getClient as getMClient, state as zState, devCount } from './_mqtt';
 import { getOsStats } from './_stats';
-import RedisClient from "@redis/client/dist/lib/client";
-import { RedisClientType } from "redis";
 
 interface Device {
     devName: string;
@@ -66,14 +64,9 @@ const server = createServer(async (req, res) => {
     console.log(req.headers['origin']);
     switch (req.url) {
         case "/sse": {
-            // res.setHeader("Access-Control-Allow-Origin", [req.headers['origin'] as string]);
             const session = await createSession(req, res);
             channel.register(session);
             session.push(devices, "init");
-
-            // session.push("Hello world!");
-            // channel.broadcast(devices);
-
             break;
         }
         case "/devices": {
@@ -131,8 +124,6 @@ async function retrieveStats(): Promise<Stats> {
     const lora = { txstatus: "unknown", queueLength: "unknown" };
     lora['txstatus'] = await rclient.get("txstatus") || "unknown";
     lora['queueLength'] = (await rclient.keys("lorabridge:device:*:message:*")).length.toString() || "0";
-    // console.log(await getOsStats());
-    // res = { ...res, ... await getOsStats() };
 
     const zigbee: { status: string, devices: number } = { status: "unknown", devices: 0 };
 
@@ -169,7 +160,6 @@ function readDB(): { [key: string]: any }[] {
 }
 
 const state = JSON.parse(readFileSync(statePath, "utf-8"));
-// const dbContent = readFileSync(dbPath, "utf-8");
 const db = readDB();
 
 devices = processData(state, db);
@@ -194,8 +184,6 @@ watch(watchPath, (eventType, filename) => {
                 channel.broadcast(newDevices[device]);
                 devices[newDevices[device]['ieeeAddr']] = newDevices[device];
             } else {
-                // console.log(JSON.stringify(newDevices[device]));
-                // console.log(JSON.stringify(devices[device]));
                 if (JSON.stringify(newDevices[device]) != JSON.stringify(devices[device])) {
                     channel.broadcast(newDevices[device]);
                     devices[newDevices[device]['ieeeAddr']] = newDevices[device];
@@ -203,23 +191,25 @@ watch(watchPath, (eventType, filename) => {
             }
         }
     }
-    // console.log(`event type is: ${eventType}`);
-    // if (filename) {
-    //     console.log(`filename provided: ${filename}`);
-    // } else {
-    //     console.log('filename not provided');
-    // }
 });
+
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const timeout = (p: Promise<any>, ms: number) => Promise.race([p, wait(ms).then(() => {
+    throw new Error("Timeout after " + ms + " ms");
+})]);
 
 async function main() {
     rclient = await getClient();
+
+    try {
+        mclient = await timeout(getMClient(), 2000);
+    } catch (error) { console.error(error); }
+
     stats = await retrieveStats();
     setTimeout(updateStats, 1000);
 
-    try {
-        mclient = await getMClient();
-    } catch (error) { console.error(error); }
     server.listen(8080);
+    console.log("listening on port 8080");
 }
 
 main();
