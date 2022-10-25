@@ -1,0 +1,15 @@
+{
+    "0x00158d0002310451": {
+        "temperature": 25.94,
+        "humidity": 53.38,
+        "pressure": 981.6,
+        "voltage": 3025,
+        "battery": 100,
+        "test": 2
+    },
+    "0x00158d000431a9ea": {
+        "contact": true,
+        "voltage": 3025,
+        "battery": 100
+    }
+}

@@ -26,6 +26,8 @@ COPY --from=build /usr/src/app/dist/app.js ./
 
 COPY data ./data
 VOLUME /usr/src/app/data
+RUN mkdir stats
+VOLUME /usr/src/app/stats
 
 # RUN echo '{"type": "module"}' > package.json
 
