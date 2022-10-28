@@ -28,23 +28,4 @@ const getClient = async () => {
     return mClient;
 }
 
-// const mClient = await mqtt.connectAsync([{ host: process.env.mqtt_host || "mqtt", port: process.env.mqtt_port || 1883 }])
-
-
-// await mClient.subscribe([STATETOPIC, DEVICESTOPIC]);
-
-// mClient.on("message", (topic, message, packet) => {
-//     if (topic === STATETOPIC) {
-//         state = JSON.parse(message.toString())["state"];
-//     } else if (topic === DEVICESTOPIC) {
-//         let i = 0;
-//         for (const dev of JSON.parse(message.toString())) {
-//             if (dev['type'] !== 'Coordinator') {
-//                 i++;
-//             }
-//         }
-//         devCount = i;
-//     }
-// });
-
 export { state, devCount, getClient };

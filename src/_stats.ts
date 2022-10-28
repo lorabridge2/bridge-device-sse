@@ -7,13 +7,13 @@ const TEMP_PATH = "/sys/class/thermal/thermal_zone0/temp";
 const temp_available = fs.existsSync(TEMP_PATH);
 
 async function getOsStats() {
-    const lines = fs.readFileSync('stats/ips').toString().split('\n');
+    const lines = fs.readFileSync('stats/ips').toString().split('\n').filter(e => e);
     const interfaces: { [key: string]: string } = {};
     for (const line of lines) {
         const tmp = line.split(' ');
         interfaces[tmp[2]] = tmp[7];
     }
-    let temp = NaN;
+    let temp = null;
     if (temp_available) {
         try {
             temp = parseInt(fs.readFileSync(TEMP_PATH).toString().trim()) / 1000;

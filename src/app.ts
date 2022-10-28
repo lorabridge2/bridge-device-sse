@@ -99,19 +99,37 @@ async function updateStats() {
     const tmp: Stats = await retrieveStats();
     const diff: any = {};
     for (const key in tmp) {
-        if (isDict(tmp[key])) {
+        if (stats[key] === undefined || (!isDict(tmp[key]) && tmp[key] !== stats[key])) {
+            diff[key] = tmp[key];
+        } else {
             for (const sub in tmp[key]) {
-                if (stats[key][sub] && tmp[key][sub] !== stats[key][sub]) {
+                if (stats[key][sub] === undefined || tmp[key][sub] !== stats[key][sub]) {
                     if (!diff[key]) {
                         diff[key] = {};
                     }
                     diff[key][sub] = tmp[key][sub];
                 }
             }
-        } else if (stats[key] && tmp[key] !== stats[key]) {
-            diff[key] = tmp[key];
         }
     }
+
+    for (const key in stats) {
+        if (tmp[key] === undefined) {
+            diff[key] = null;
+        } else {
+            if (isDict(stats[key])) {
+                for (const sub in stats[key]) {
+                    if (tmp[key][sub] === undefined) {
+                        if (diff[key] === undefined) {
+                            diff[key] = {};
+                        }
+                        diff[key][sub] = null;
+                    }
+                }
+            }
+        }
+    }
+
     if (Object.keys(diff).length !== 0) {
         console.log(diff);
         statsChannel.broadcast(diff);
