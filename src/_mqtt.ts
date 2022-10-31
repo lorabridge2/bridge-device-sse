@@ -8,9 +8,6 @@ let devCount = 0;
 const getClient = async () => {
     const mClient = await mqtt.connectAsync("mqtt://" + process.env.mqtt_host + ":" + process.env.mqtt_port);
 
-
-    await mClient.subscribe([STATETOPIC, DEVICESTOPIC]);
-
     mClient.on("message", (topic, message, packet) => {
         if (topic === STATETOPIC) {
             // state = JSON.parse(message.toString())["state"];
@@ -25,6 +22,9 @@ const getClient = async () => {
             devCount = i;
         }
     });
+
+    await mClient.subscribe([STATETOPIC, DEVICESTOPIC]);
+
     return mClient;
 }
 
