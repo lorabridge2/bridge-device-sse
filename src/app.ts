@@ -131,7 +131,7 @@ async function updateStats() {
     }
 
     if (Object.keys(diff).length !== 0) {
-        console.log(diff);
+        // console.log(diff);
         statsChannel.broadcast(diff);
         stats = tmp;
     }
@@ -205,6 +205,14 @@ watch(watchPath, (eventType, filename) => {
                 if (JSON.stringify(newDevices[device]) != JSON.stringify(devices[device])) {
                     channel.broadcast(newDevices[device]);
                     devices[newDevices[device]['ieeeAddr']] = newDevices[device];
+                }
+            }
+        }
+        if (Object.keys(devices).length > Object.keys(newDevices).length) {
+            for (const device in devices) {
+                if (!(device in newDevices)) {
+                    channel.broadcast({ ieeeAddr: device, remove: true });
+                    delete devices[device];
                 }
             }
         }
