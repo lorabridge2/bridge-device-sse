@@ -1,5 +1,5 @@
 # Device SSE
-This repository is part of the LoRaBridge project.
+This repository is part of the [LoRaBridge](https://github.com/lorabridge/lorabridge) project.
 It provides the docker image for the SSE server which provides data for the webinterface used on our bridge device.
 
 The SSE server is a self-provided TypeScript application. It retrieves a list of ZigBee devices from the Zigbee2MQTT server and provides the data per HTTP as well as any updates to the data (e.g. new devices, additional attributes) per server-sent events (SSE) for the web interface.
