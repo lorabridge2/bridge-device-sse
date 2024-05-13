@@ -1,9 +1,10 @@
+import { createChannel, createSession } from "better-sse";
+import 'dotenv/config';
 import { createServer } from "http";
-import { createSession, createChannel } from "better-sse";
-import { watch, readFileSync } from 'node:fs';
-import 'dotenv/config'
-import { getClient } from './_redis';
-import { getClient as getMClient, state as zState, devCount } from './_mqtt';
+import { readFileSync, watch } from 'node:fs';
+import { WatchError } from "redis";
+import { devCount, getClient as getMClient, state as zState } from './_mqtt';
+import { HASH_ID, HASH_IEEE, LOCK_PREFIX, REGISTRY_INDEX, getClient } from './_redis';
 import { getOsStats } from './_stats';
 
 interface Device {
@@ -11,6 +12,7 @@ interface Device {
     ieeeAddr: string;
     manufName: string;
     attributes: string[];
+    id: number;
 }
 
 interface Stats extends Iterable<string> {
@@ -60,9 +62,12 @@ let rclient: any;
 let mclient;
 
 const server = createServer(async (req, res) => {
+    let urlParts = req.url?.split("?") ?? ["", ""];
+    let query = new URLSearchParams(urlParts[1]?.split("#")[0]);
+
     res.setHeader("Access-Control-Allow-Origin", [req.headers['origin'] as string]);
-    console.log(req.headers['origin']);
-    switch (req.url) {
+
+    switch (urlParts[0]) {
         case "/sse": {
             const session = await createSession(req, res);
             channel.register(session);
@@ -70,6 +75,7 @@ const server = createServer(async (req, res) => {
             break;
         }
         case "/devices": {
+            res.setHeader("Content-Type", "application/json");
             res.end(JSON.stringify(devices));
             break;
         }
@@ -82,7 +88,40 @@ const server = createServer(async (req, res) => {
             break;
         }
         case "/stats": {
+            res.setHeader("Content-Type", "application/json");
             res.end(JSON.stringify(await retrieveStats()));
+            break;
+        }
+        case "/id": {
+            // check query param is number
+            if (!(Number(query.get("key")) > 0)) {
+                res.writeHead(404).end();
+                break;
+            }
+            let dev_id = await rclient.hGet(HASH_ID, query.get("key"));
+
+            if (dev_id === null) {
+                // device not in redis
+                res.writeHead(404).end();
+                break;
+            }
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify(dev_id));
+            break;
+        }
+        case "/ieee": {
+            if (!query.get("key")) {
+                res.writeHead(404).end();
+                break;
+            }
+            let dev_ieee = await rclient.hGet(HASH_IEEE, query.get("key"));
+            if (dev_ieee === null) {
+                // device not in redis
+                res.writeHead(404).end();
+                break;
+            }
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify(dev_ieee));
             break;
         }
         default: {
@@ -150,6 +189,52 @@ async function retrieveStats(): Promise<Stats> {
 
     return { ... await getOsStats(), lorawan: lora, zigbee: zigbee } as Stats;
 }
+function randomIntFromInterval(min: number, max: number) { // min and max included 
+    return Math.floor(Math.random() * (max - min + 1) + min);
+}
+async function registerDevice(ieee: string): Promise<number> {
+    let abort: number = 0;
+    // retrieve ID to use for new device
+    let devID: number;
+    if (!await rclient.hExists(HASH_IEEE, ieee)) {
+        devID = await rclient.incr(REGISTRY_INDEX);
+    }
+
+    do {
+        try {
+            // abort if device was created by other client
+            if (!await rclient.hExists(HASH_IEEE, ieee)) {
+                await rclient.executeIsolated(async (isolatedClient: any) => {
+                    // https://github.com/redis/node-redis/issues/2613
+                    // watch a lock and abort if other clients modify it
+                    await isolatedClient.watch([LOCK_PREFIX, ieee].join(":"));
+
+                    // transation actions: modify lock to interrupt other clients also wanting to insert the device,
+                    // remove lock after a minute, and insert device in lookup tables
+                    isolatedClient.multi()
+                        .set([LOCK_PREFIX, ieee].join(":"), devID)
+                        .expire([LOCK_PREFIX, ieee].join(":"), 60)
+                        .hSet(HASH_IEEE, ieee, devID)
+                        .hSet(HASH_ID, devID, ieee)
+                        .exec();
+
+                    // if lock key was modified, the abort transation with WatchError
+
+                    return devID;
+                });
+            } else {
+                break;
+            }
+        } catch (err) {
+            if (err instanceof WatchError) {
+                // the transaction aborted
+                abort++;
+                await new Promise(resolve => setTimeout(resolve, randomIntFromInterval(250, 750)));
+            }
+        }
+    } while (abort < 100);
+    return -1;
+}
 
 function processData(state: { [key: string]: { [key: string]: any } }, db: { [key: string]: any }[]): { [key: string]: Device } {
     const devices: { [key: string]: Device } = {};
@@ -164,6 +249,7 @@ function processData(state: { [key: string]: { [key: string]: any } }, db: { [ke
                 break;
             }
         }
+        registerDevice(ieeeAddr);
         devices[ieeeAddr] = dev as Device;
     }
     return devices;
@@ -180,7 +266,6 @@ function readDB(): { [key: string]: any }[] {
 const state = JSON.parse(readFileSync(statePath, "utf-8"));
 const db = readDB();
 
-devices = processData(state, db);
 // console.log(devices);
 
 watch(watchPath, (eventType, filename) => {
@@ -231,6 +316,7 @@ async function main() {
         mclient = await timeout(getMClient(), 2000);
     } catch (error) { console.error(error); }
 
+    devices = processData(state, db);
     stats = await retrieveStats();
     setTimeout(updateStats, 1000);
 
