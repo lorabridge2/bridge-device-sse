@@ -4,7 +4,7 @@ import { createServer } from "http";
 import { readFileSync, watch } from 'node:fs';
 import { WatchError } from "redis";
 import { devCount, getClient as getMClient, state as zState } from './_mqtt';
-import { HASH_ID, HASH_IEEE, LOCK_PREFIX, REGISTRY_INDEX, getClient, ATTRIBUTES_PREFIX } from './_redis';
+import { HASH_ID, HASH_IEEE, LOCK_PREFIX, REGISTRY_INDEX, getClient, ATTRIBUTES_PREFIX, NAME_PREFIX } from './_redis';
 import { getOsStats } from './_stats';
 
 interface Device {
@@ -218,6 +218,7 @@ async function registerDevice(dev: Device): Promise<number> {
                         .hSet(HASH_IEEE, ieee, devID)
                         .hSet(HASH_ID, devID, ieee)
                         .sAdd([ATTRIBUTES_PREFIX, ieee].join(":"), dev["attributes"])
+                        .set([NAME_PREFIX, ieee].join(":"), dev['devName'])
                         .exec();
 
                     // if lock key was modified, the abort transation with WatchError

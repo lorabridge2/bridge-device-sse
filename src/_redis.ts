@@ -2,6 +2,7 @@ import { createClient } from 'redis';
 
 const DISABLED_PREFIX = "lorabridge:attributes:";
 const ATTRIBUTES_PREFIX = "lorabridge:device:attributes";
+const NAME_PREFIX = "lorabridge:device:name";
 const REGISTRY_PREFIX = "lorabridge:device:registry";
 const LOCK_PREFIX = [REGISTRY_PREFIX, "lock"].join(":");
 const HASH_IEEE = [REGISTRY_PREFIX, "ieee"].join(":");
@@ -21,4 +22,4 @@ const getClient = async () => {
 
 // await client.connect();
 
-export { getClient, ATTRIBUTES_PREFIX, DISABLED_PREFIX, REGISTRY_PREFIX, LOCK_PREFIX, HASH_ID, HASH_IEEE, REGISTRY_INDEX };
+export { getClient, NAME_PREFIX, ATTRIBUTES_PREFIX, DISABLED_PREFIX, REGISTRY_PREFIX, LOCK_PREFIX, HASH_ID, HASH_IEEE, REGISTRY_INDEX };
