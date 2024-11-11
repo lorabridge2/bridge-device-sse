@@ -4,7 +4,7 @@ import { createServer } from "http";
 import { readFileSync, watch } from 'node:fs';
 import { WatchError } from "redis";
 import { devCount, getClient as getMClient, state as zState } from './_mqtt';
-import { HASH_ID, HASH_IEEE, LOCK_PREFIX, REGISTRY_INDEX, getClient } from './_redis';
+import { HASH_ID, HASH_IEEE, LOCK_PREFIX, REGISTRY_INDEX, getClient, ATTRIBUTES_PREFIX } from './_redis';
 import { getOsStats } from './_stats';
 
 interface Device {
@@ -192,10 +192,11 @@ async function retrieveStats(): Promise<Stats> {
 function randomIntFromInterval(min: number, max: number) { // min and max included 
     return Math.floor(Math.random() * (max - min + 1) + min);
 }
-async function registerDevice(ieee: string): Promise<number> {
+async function registerDevice(dev: Device): Promise<number> {
     let abort: number = 0;
     // retrieve ID to use for new device
     let devID: number;
+    let ieee = dev["ieeeAddr"];
     if (!await rclient.hExists(HASH_IEEE, ieee)) {
         devID = await rclient.incr(REGISTRY_INDEX);
     }
@@ -216,6 +217,7 @@ async function registerDevice(ieee: string): Promise<number> {
                         .expire([LOCK_PREFIX, ieee].join(":"), 60)
                         .hSet(HASH_IEEE, ieee, devID)
                         .hSet(HASH_ID, devID, ieee)
+                        .sAdd([ATTRIBUTES_PREFIX, ieee].join(":"), dev["attributes"])
                         .exec();
 
                     // if lock key was modified, the abort transation with WatchError
@@ -249,7 +251,7 @@ function processData(state: { [key: string]: { [key: string]: any } }, db: { [ke
                 break;
             }
         }
-        registerDevice(ieeeAddr);
+        registerDevice(dev as Device);
         devices[ieeeAddr] = dev as Device;
     }
     return devices;
