@@ -6,6 +6,10 @@ import { WatchError } from "redis";
 import { devCount, getClient as getMClient, state as zState } from './_mqtt';
 import { HASH_ID, HASH_IEEE, LOCK_PREFIX, REGISTRY_INDEX, getClient, ATTRIBUTES_PREFIX, NAME_PREFIX } from './_redis';
 import { getOsStats } from './_stats';
+import { DEVICE_CLASSES } from "./_device_classes";
+
+const REDIS_DEVICE_NAME: string = "lorabridge:device:name";
+const REDIS_DEVICE_JOIN: string = "lorabridge:device:join"
 
 interface Device {
     devName: string;
@@ -289,6 +293,7 @@ watch(watchPath, (eventType, filename) => {
             if (!(device in (devices))) {
                 channel.broadcast(newDevices[device]);
                 devices[newDevices[device]['ieeeAddr']] = newDevices[device];
+                initiateLoraUpdate(newDevices[device]);
             } else {
                 if (JSON.stringify(newDevices[device]) != JSON.stringify(devices[device])) {
                     channel.broadcast(newDevices[device]);
@@ -306,6 +311,24 @@ watch(watchPath, (eventType, filename) => {
         }
     }
 });
+
+async function initiateLoraUpdate(device: Device) {
+    let dev_id = await rclient.hGet(HASH_ID, device['ieeeAddr']);
+    
+    const devName = Buffer.concat([
+        Buffer.from([parseInt(dev_id)]),
+        Buffer.from(device['ieeeAddr'].toLowerCase().replace("0x", ""), 'hex'),
+        Buffer.from(device['devName'])
+    ]);
+    await rclient.lPush(REDIS_DEVICE_NAME, devName);
+
+    const devJoin = Buffer.concat([
+        Buffer.from([parseInt(dev_id)]),
+        Buffer.from(device['attributes'].map(x => DEVICE_CLASSES.indexOf(x)))
+    ]);
+
+    await rclient.lPush(REDIS_DEVICE_JOIN, devJoin);
+}
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const timeout = (p: Promise<any>, ms: number) => Promise.race([p, wait(ms).then(() => {
