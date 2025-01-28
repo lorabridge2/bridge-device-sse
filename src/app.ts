@@ -291,9 +291,12 @@ watch(watchPath, (eventType, filename) => {
         console.log("change");
         for (const device in newDevices) {
             if (!(device in (devices))) {
+                console.log("new dev added");
+                console.log(device);
                 channel.broadcast(newDevices[device]);
                 devices[newDevices[device]['ieeeAddr']] = newDevices[device];
                 initiateLoraUpdate(newDevices[device]);
+                console.log("device sent per lora");
             } else {
                 if (JSON.stringify(newDevices[device]) != JSON.stringify(devices[device])) {
                     channel.broadcast(newDevices[device]);
@@ -314,7 +317,7 @@ watch(watchPath, (eventType, filename) => {
 
 async function initiateLoraUpdate(device: Device) {
     let dev_id = await rclient.hGet(HASH_ID, device['ieeeAddr']);
-    
+
     const devName = Buffer.concat([
         Buffer.from([parseInt(dev_id)]),
         Buffer.from(device['ieeeAddr'].toLowerCase().replace("0x", ""), 'hex'),
