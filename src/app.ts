@@ -291,6 +291,7 @@ watch(watchPath, (eventType, filename) => {
         console.log("change");
         for (const device in newDevices) {
             if (!(device in (devices))) {
+                console.log(Date());
                 console.log("new dev added");
                 console.log(device);
                 channel.broadcast(newDevices[device]);
